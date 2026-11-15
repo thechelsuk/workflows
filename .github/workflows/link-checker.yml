@@ -101,7 +101,7 @@ jobs:
           args: >-
             --no-progress
             --root-dir "${{ env.ROOT }}"
-            --remap 'https?://${{ inputs.site_host }}(/.*)? file://${{ env.ROOT }}$1'
+            --remap '^https?://${{ inputs.site_host }}(/.*)? file://${{ env.ROOT }}$1'
             --exclude '^mailto:'
             --exclude 'webmention\.io/'
             ${{ steps.scope.outputs.args }}
