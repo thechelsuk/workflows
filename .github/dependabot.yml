@@ -1,0 +1,10 @@
+---
+version: 2
+updates:
+  # Keeps the actions these shared workflows use up to date.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    assignees:
+      - thechelsuk
+    schedule:
+      interval: "weekly"
