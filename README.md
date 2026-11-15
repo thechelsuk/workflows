@@ -43,3 +43,46 @@ jobs:
 | `internal_only` | `false` | Check internal links and anchors only. |
 | `extra_args` | | Extra lychee arguments, such as `--exclude` for hosts that block bots. |
 | `assignee` | `thechelsuk` | Who the issue is assigned to. |
+
+## Release
+
+`.github/workflows/release.yml` tags a semver release (no `v` prefix) and
+writes its notes when the first line of a commit pushed to `main` starts with
+`release:` (minor), `release(minor):`, `release(patch):` or `release(major):`.
+Other commits are ignored. The commit message is only read from an environment
+variable, never pasted into the script, so a crafted message can't run
+commands.
+
+```yaml
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: thechelsuk/workflows/.github/workflows/release.yml@main
+```
+
+## Dependency review
+
+`.github/workflows/dependency-review.yml` flags dependencies a pull request
+adds or changes that have known vulnerabilities. Free on public repos.
+
+```yaml
+name: Dependency Review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    uses: thechelsuk/workflows/.github/workflows/dependency-review.yml@main
+```
