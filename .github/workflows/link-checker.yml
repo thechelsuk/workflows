@@ -73,6 +73,8 @@ jobs:
         if: inputs.post_build != ''
         run: ${{ inputs.post_build }}
 
+      # webmention.io/.../xmlrpc and /webmention are the pages' pingback and
+      # webmention endpoints (in <head>), which refuse plain requests: skipped.
       # GitHub Pages serves /page from page.html, then page.xml, even when the
       # name has a dot in it (/homebridge-2.0-launch). lychee only adds .html,
       # and not to a dotted name, so link each file at its extensionless path.
@@ -101,6 +103,7 @@ jobs:
             --root-dir "${{ env.ROOT }}"
             --remap 'https?://${{ inputs.site_host }}(/.*)? file://${{ env.ROOT }}$1'
             --exclude '^mailto:'
+            --exclude 'webmention\.io/'
             ${{ steps.scope.outputs.args }}
             ${{ inputs.extra_args }}
             './${{ inputs.site_dir }}/**/*.html'
