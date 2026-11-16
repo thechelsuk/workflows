@@ -75,6 +75,8 @@ jobs:
 
       # webmention.io/.../xmlrpc and /webmention are the pages' pingback and
       # webmention endpoints (in <head>), which refuse plain requests: skipped.
+      # web.brid.gy/r/... links are Bridgy's backfeed redirects, which often
+      # return 503 for a while: skipped too, as they aren't the site's links.
       # GitHub Pages serves /page from page.html, then page.xml, even when the
       # name has a dot in it (/homebridge-2.0-launch). lychee only adds .html,
       # and not to a dotted name, so link each file at its extensionless path.
@@ -104,6 +106,7 @@ jobs:
             --remap '^https?://${{ inputs.site_host }}(/.*)? file://${{ env.ROOT }}$1'
             --exclude '^mailto:'
             --exclude 'webmention\.io/'
+            --exclude 'web\.brid\.gy/'
             ${{ steps.scope.outputs.args }}
             ${{ inputs.extra_args }}
             './${{ inputs.site_dir }}/**/*.html'
