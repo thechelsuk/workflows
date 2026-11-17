@@ -1,6 +1,7 @@
 # workflows
 
-thechelsuk's shared, reusable GitHub Actions workflows and community files.
+thechelsuk's shared, reusable GitHub Actions workflows. Default issue forms and
+community files are in [thechelsuk/.github](https://github.com/thechelsuk/.github).
 Each repo calls a workflow from a short file of its own, so a fix here reaches
 every site at once.
 
@@ -90,10 +91,14 @@ jobs:
 ## New issue
 
 `.github/workflows/new-issue.yml` triages each new issue: it adds a `triage`
-label and, when the issue has no type label, guesses one (`bug`,
-`enhancement` or `question`) from its wording, assigns it to thechelsuk, and
-thanks the author, saying an Action triaged and tagged it and it awaits human review, unless they're a bot or the assignee. Labels
-it needs are created if the repo doesn't have them.
+label and a type. Issues from the default forms in
+[thechelsuk/.github](https://github.com/thechelsuk/.github) are known by their
+headings (`bug`, `enhancement`, `question` or `feedback`), and their "Which
+part?" answer adds `app` or `website`; other issues without a type get a guess
+from their wording. It assigns the issue to thechelsuk and thanks the author,
+saying an Action triaged and tagged it and it awaits human review (plus a line
+when they've ticked the sponsored Feature request bump), unless they're a bot
+or the assignee. Labels it needs are created if the repo doesn't have them.
 
 ```yaml
 name: New Issue
