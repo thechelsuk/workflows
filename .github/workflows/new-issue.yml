@@ -12,10 +12,11 @@ on:
         type: string
         default: thechelsuk
       message:
-        description: The thank-you comment; {author} becomes the issue author's @handle.
+        description: The thank-you comment; {author} becomes the issue author's @handle and {labels} the labels added.
         type: string
         default: >-
-          Thanks for opening this, {author}. I've seen it and will reply here once I've had a proper look.
+          Thanks for opening this, {author}! A GitHub Action has triaged it and tagged it {labels},
+          and it's now waiting for a human to review it.
 
 permissions:
   issues: write
@@ -64,7 +65,8 @@ jobs:
             const author = issue.user.login;
             const bot = issue.user.type === "Bot" || author.endsWith("[bot]");
             if (!bot && author.toLowerCase() !== assignee.toLowerCase()) {
-              const body = process.env.MESSAGE.replaceAll("{author}", `@${author}`);
+              const labels = want.map((l) => `\`${l}\``).join(" and ");
+              const body = process.env.MESSAGE.replaceAll("{author}", `@${author}`).replaceAll("{labels}", labels);
               await github.rest.issues.createComment({ owner, repo, issue_number: number, body });
             }
             core.info(`#${number}: labels ${want.join(", ")}, assigned to ${assignee}${bot ? ", bot author" : ""}`);

@@ -92,7 +92,7 @@ jobs:
 `.github/workflows/new-issue.yml` triages each new issue: it adds a `triage`
 label and, when the issue has no type label, guesses one (`bug`,
 `enhancement` or `question`) from its wording, assigns it to thechelsuk, and
-thanks the author with a comment unless they're a bot or the assignee. Labels
+thanks the author, saying an Action triaged and tagged it and it awaits human review, unless they're a bot or the assignee. Labels
 it needs are created if the repo doesn't have them.
 
 ```yaml
@@ -113,4 +113,4 @@ jobs:
 | Input | Default | What it does |
 |---|---|---|
 | `assignee` | `thechelsuk` | Who new issues are assigned to (never thanked). |
-| `message` | a short thank-you | The comment; `{author}` becomes the author's @handle. |
+| `message` | a short thank-you | The comment; `{author}` becomes the author's @handle, `{labels}` the labels added. |
