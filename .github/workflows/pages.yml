@@ -28,6 +28,10 @@ on:
         description: Node.js version, when the repo has a package.json.
         type: string
         default: "24"
+      fetch_depth:
+        description: Commits of history to check out; 0 for all (for "last updated" dates from git).
+        type: number
+        default: 1
 
 permissions:
   contents: read
@@ -38,6 +42,8 @@ jobs:
     steps:
       - name: Check out site
         uses: actions/checkout@v7
+        with:
+          fetch-depth: ${{ inputs.fetch_depth }}
 
       - name: Set up Node.js
         if: hashFiles('package.json') != ''

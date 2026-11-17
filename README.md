@@ -161,3 +161,4 @@ jobs:
 | `pre_build` | | A command run before the build, such as `npm run vendor && npm test`. |
 | `exclude` | | Extra paths to leave out of a static site, space-separated. |
 | `node_version` | `24` | Node.js version, when the repo has a `package.json`. |
+| `fetch_depth` | `1` | Commits of history to check out; `0` for all, for "last updated" dates from git. |
