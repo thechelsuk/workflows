@@ -1,0 +1,115 @@
+# Reusable GitHub Pages build and deploy. Each site calls it from a short .github/workflows/pages.yml (see
+# README.md) on push and pull_request to main and workflow_dispatch. It builds every time, so a pull request
+# shows whether the site still builds, and deploys only from main (never from a template repo), one deploy at a
+# time without cancelling one that's running.
+#
+#   build: static  publishes the repo as it is, minus .github, dotfiles (but not .well-known) and repo housekeeping
+#                  files (README, LICENSE and so on), plus anything in `exclude`.
+#   build: jekyll  builds with the repo's .ruby-version, JEKYLL_ENV=production and Pages' base path.
+# Either way, a package.json gets `npm ci` first, then `pre_build` runs if it's set.
+name: Pages
+
+on:
+  workflow_call:
+    inputs:
+      build:
+        description: "static or jekyll"
+        type: string
+        default: static
+      pre_build:
+        description: A command run before the build (after npm ci when there's a package.json).
+        type: string
+        default: ""
+      exclude:
+        description: Extra paths to leave out of a static site, space-separated (rsync patterns).
+        type: string
+        default: ""
+      node_version:
+        description: Node.js version, when the repo has a package.json.
+        type: string
+        default: "24"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out site
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        if: hashFiles('package.json') != ''
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node_version }}
+          cache: npm
+
+      - name: Install npm packages
+        if: hashFiles('package.json') != ''
+        run: npm ci
+
+      - name: Set up Ruby
+        if: inputs.build == 'jekyll'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Before the build
+        if: inputs.pre_build != ''
+        env:
+          PRE_BUILD: ${{ inputs.pre_build }}
+        run: bash -eo pipefail -c "$PRE_BUILD"
+
+      - name: Configure GitHub Pages
+        id: pages
+        if: github.event_name != 'pull_request' && !github.event.repository.is_template
+        uses: actions/configure-pages@v6
+
+      - name: Build with Jekyll
+        if: inputs.build == 'jekyll'
+        env:
+          JEKYLL_ENV: production
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+        run: bundle exec jekyll build --baseurl "$BASE_PATH"
+
+      - name: Assemble static site
+        if: inputs.build == 'static'
+        env:
+          EXCLUDE: ${{ inputs.exclude }}
+        run: |
+          args=(--exclude='_site/' --exclude='node_modules/'
+                --include='.well-known/' --include='.well-known/**' --exclude='.*'
+                --exclude='README*' --exclude='LICENSE*' --exclude='CONTRIBUTING*' --exclude='CODE_OF_CONDUCT*'
+                --exclude='SECURITY.md' --exclude='CHANGELOG*' --exclude='package.json' --exclude='package-lock.json'
+                --exclude='Gemfile' --exclude='Gemfile.lock')
+          for p in $EXCLUDE; do args+=(--exclude="$p"); done
+          mkdir -p _site
+          rsync -a "${args[@]}" ./ _site/
+          find _site -type f | sort
+
+      - name: Upload site
+        if: github.event_name != 'pull_request' && !github.event.repository.is_template
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && !github.event.repository.is_template
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages-${{ github.repository }}
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

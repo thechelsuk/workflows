@@ -114,3 +114,50 @@ jobs:
 |---|---|---|
 | `assignee` | `thechelsuk` | Who new issues are assigned to (never thanked). |
 | `message` | a short thank-you | The comment; `{author}` becomes the author's @handle, `{labels}` the labels added. |
+
+## Pages
+
+`.github/workflows/pages.yml` builds a site and deploys it to GitHub Pages. It
+builds on every push and pull request, so a pull request shows whether the
+site still builds, and deploys only from `main` (never from a template repo),
+one deploy at a time without cancelling one that's running.
+
+- `build: static` publishes the repo as it is, without `.github`, dotfiles
+  (`.well-known` is kept) and repo housekeeping files (README, LICENSE,
+  CONTRIBUTING, CHANGELOG, package and Gemfile files). No list of files to keep
+  up to date: a new file is published as soon as it's committed.
+- `build: jekyll` builds with the repo's `.ruby-version`, `JEKYLL_ENV=production`
+  and Pages' base path.
+- Either way, a repo with a `package.json` gets `npm ci` first, then
+  `pre_build` runs if it's set.
+
+Requires Settings → Pages → Source: "GitHub Actions".
+
+```yaml
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  pages:
+    uses: thechelsuk/workflows/.github/workflows/pages.yml@main
+    with:
+      build: static
+```
+
+| Input | Default | What it does |
+|---|---|---|
+| `build` | `static` | `static` publishes the repo's files; `jekyll` builds the site. |
+| `pre_build` | | A command run before the build, such as `npm run vendor && npm test`. |
+| `exclude` | | Extra paths to leave out of a static site, space-separated. |
+| `node_version` | `24` | Node.js version, when the repo has a `package.json`. |
