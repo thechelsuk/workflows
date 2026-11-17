@@ -1,0 +1,70 @@
+# Reusable new-issue triage: when an issue is opened, labels it, assigns it and, if a person (not a bot and not the
+# assignee) opened it, thanks them. Each repo calls it from a short .github/workflows/new-issue.yml (see README.md)
+# on `issues: opened`. The issue's title and body are read from the event payload inside the script, never pasted
+# into it, so a crafted issue can't run commands.
+name: New Issue
+
+on:
+  workflow_call:
+    inputs:
+      assignee:
+        description: Who new issues are assigned to (also never thanked).
+        type: string
+        default: thechelsuk
+      message:
+        description: The thank-you comment; {author} becomes the issue author's @handle.
+        type: string
+        default: >-
+          Thanks for opening this, {author}. I've seen it and will reply here once I've had a proper look.
+
+permissions:
+  issues: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label, assign and thank
+        uses: actions/github-script@v9
+        env:
+          ASSIGNEE: ${{ inputs.assignee }}
+          MESSAGE: ${{ inputs.message }}
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const { owner, repo } = context.repo;
+            const number = issue.number;
+            const assignee = process.env.ASSIGNEE;
+
+            // Labels: "triage" on everything, plus a type when the issue doesn't already have one.
+            const TYPES = {
+              bug: { color: "d73a4a", description: "Something isn't working" },
+              enhancement: { color: "a2eeef", description: "New feature or request" },
+              question: { color: "d876e3", description: "Further information is requested" },
+              triage: { color: "fbca04", description: "New, not looked at yet" },
+            };
+            const have = new Set((issue.labels || []).map((l) => l.name));
+            const text = `${issue.title}\n${issue.body || ""}`.toLowerCase();
+            const want = ["triage"];
+            if (!["bug", "enhancement", "question", "documentation"].some((t) => have.has(t))) {
+              if (/\b(bug|crash(es|ed|ing)?|broken|error|fails?|failing|doesn'?t work|not working|wrong)\b/.test(text)) want.push("bug");
+              else if (/\b(could you|would (it|you)|please add|feature|option|support for|ability to|i'?d like|it would be)\b/.test(text)) want.push("enhancement");
+              else if (/\?\s*$/.test(issue.title) || /\b(how do i|how does|is there a way|clarify)\b/.test(text)) want.push("question");
+            }
+            for (const name of want) {
+              try { await github.rest.issues.getLabel({ owner, repo, name }); }
+              catch { await github.rest.issues.createLabel({ owner, repo, name, ...TYPES[name] }); }
+            }
+            await github.rest.issues.addLabels({ owner, repo, issue_number: number, labels: want });
+
+            if (!(issue.assignees || []).some((a) => a.login === assignee)) {
+              await github.rest.issues.addAssignees({ owner, repo, issue_number: number, assignees: [assignee] });
+            }
+
+            const author = issue.user.login;
+            const bot = issue.user.type === "Bot" || author.endsWith("[bot]");
+            if (!bot && author.toLowerCase() !== assignee.toLowerCase()) {
+              const body = process.env.MESSAGE.replaceAll("{author}", `@${author}`);
+              await github.rest.issues.createComment({ owner, repo, issue_number: number, body });
+            }
+            core.info(`#${number}: labels ${want.join(", ")}, assigned to ${assignee}${bot ? ", bot author" : ""}`);

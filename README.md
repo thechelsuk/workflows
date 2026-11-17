@@ -86,3 +86,31 @@ jobs:
   dependency-review:
     uses: thechelsuk/workflows/.github/workflows/dependency-review.yml@main
 ```
+
+## New issue
+
+`.github/workflows/new-issue.yml` triages each new issue: it adds a `triage`
+label and, when the issue has no type label, guesses one (`bug`,
+`enhancement` or `question`) from its wording, assigns it to thechelsuk, and
+thanks the author with a comment unless they're a bot or the assignee. Labels
+it needs are created if the repo doesn't have them.
+
+```yaml
+name: New Issue
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  triage:
+    uses: thechelsuk/workflows/.github/workflows/new-issue.yml@main
+```
+
+| Input | Default | What it does |
+|---|---|---|
+| `assignee` | `thechelsuk` | Who new issues are assigned to (never thanked). |
+| `message` | a short thank-you | The comment; `{author}` becomes the author's @handle. |
