@@ -101,6 +101,9 @@ jobs:
         uses: actions/upload-pages-artifact@v5
         with:
           path: _site
+          # The action drops dot-folders by default, which would lose .well-known. The build has already left out
+          # every other dotfile (static), or only kept the ones a site includes (Jekyll).
+          include-hidden-files: true
 
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && !github.event.repository.is_template
