@@ -94,8 +94,9 @@ jobs:
 label and a type. Issues from the default forms in
 [thechelsuk/.github](https://github.com/thechelsuk/.github) are known by their
 headings (`bug`, `enhancement`, `question` or `feedback`), and their "Which
-part?" answer adds `app` or `website`; other issues without a type get a guess
-from their wording. It assigns the issue to thechelsuk and thanks the author,
+part?" answer adds `app` or `website`. Other issues with no labels get a guess
+from their wording; an issue that already has a label (from a repo's own form,
+such as `correction`) keeps it and gets no guess. It assigns the issue to thechelsuk and thanks the author,
 saying an Action triaged and tagged it and it awaits human review (plus a line
 when they've ticked the sponsored Feature request bump), unless they're a bot
 or the assignee. Labels it needs are created if the repo doesn't have them.

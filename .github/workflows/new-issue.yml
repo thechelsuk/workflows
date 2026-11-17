@@ -39,7 +39,8 @@ jobs:
 
             // Labels: "triage" on everything, plus a type. The default issue forms (thechelsuk/.github) are known by
             // their headings, since a form's own label is only applied if the repo already has it; anything else
-            // (gh, the API, a repo's own forms) gets a guess from its wording when it has no type yet.
+            // (gh, the API) gets a guess from its wording when it has no labels yet. A repo's own forms bring their
+            // own labels (a correction or listing form, say), so an issue that already has any label isn't guessed.
             const TYPES = {
               bug: { color: "d73a4a", description: "Something isn't working" },
               enhancement: { color: "a2eeef", description: "New feature or request" },
@@ -56,7 +57,7 @@ jobs:
             const FORMS = [["### What happened?", "bug"], ["### I would like…", "enhancement"], ["### Your question", "question"], ["### Your feedback", "feedback"]];
             const form = FORMS.find(([heading]) => body.includes(heading));
             if (form) want.push(form[1]);
-            else if (!["bug", "enhancement", "question", "feedback", "documentation"].some((t) => have.has(t))) {
+            else if (have.size === 0) {
               if (/\b(bug|crash(es|ed|ing)?|broken|error|fails?|failing|doesn'?t work|not working|wrong)\b/.test(text)) want.push("bug");
               else if (/\b(could you|would (it|you)|please add|feature|option|support for|ability to|i'?d like|it would be)\b/.test(text)) want.push("enhancement");
               else if (/\?\s*$/.test(issue.title) || /\b(how do i|how does|is there a way|clarify)\b/.test(text)) want.push("question");
