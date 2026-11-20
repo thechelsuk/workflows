@@ -47,7 +47,7 @@ jobs:
 
 ## Release
 
-`.github/workflows/release.yml` tags a semver release (no `v` prefix) and
+`.github/workflows/release.yml` tags a semver release with a `v` prefix (`v1.2.3`, like the App Store releases) and
 writes its notes when the first line of a commit pushed to `main` starts with
 `release:` (minor), `release(minor):`, `release(patch):` or `release(major):`.
 Other commits are ignored. The commit message is only read from an environment
@@ -68,6 +68,57 @@ jobs:
   release:
     uses: thechelsuk/workflows/.github/workflows/release.yml@main
 ```
+
+Its notes come from the release notes action below. To leave a repo's own
+automated commits out of them, pass a regular expression as `skip`:
+
+```yaml
+jobs:
+  release:
+    uses: thechelsuk/workflows/.github/workflows/release.yml@main
+    with:
+      skip: "^Update data "
+```
+
+## Release notes
+
+`.github/actions/release-notes` writes release notes in the thechels.uk style:
+an **About** section with the repository's description, then **What's
+Changed**, a bullet list of the changes since the previous release.
+
+It cleans each commit subject: conventional commit prefixes (`feat:`,
+`build(deps):` and so on), pull request and Dependabot links, `(#12)` and
+commit hash references, and trailing full stops are removed, and the first
+letter is capitalised. Dependabot's bump text is kept ("Bump jest from 30.5.1
+to 30.5.2"). Merges, duplicates, `[skip ci]` commits and automated commits
+(New Feed, webmention cache refreshes, daily rundowns, lint auto-fixes, outgoing
+mentions) are left out. A commit whose subject is only a version number, such as
+`chore: Release 1.2.4`, uses the first paragraph of its message instead, without
+`Co-Authored-By` or `Signed-off-by` lines.
+
+The release workflow above uses it. Repos that release from `package.json`
+call it in their own workflow, after checking out with `fetch-depth: 0`:
+
+```yaml
+- name: Build release notes
+  id: notes
+  uses: thechelsuk/workflows/.github/actions/release-notes@main
+  with:
+    previous: ${{ steps.previous.outputs.tag }}
+    description: ${{ steps.pkg.outputs.description }}
+
+- uses: softprops/action-gh-release@v3
+  with:
+    body_path: ${{ steps.notes.outputs.notes_file }}
+```
+
+| Input | Default | What it does |
+|---|---|---|
+| `previous` | (all history) | The previous release tag. |
+| `description` | The repo's GitHub description | Text for the About section. |
+| `skip` | (none) | A regular expression: commit subjects that match are left out. |
+
+Run its tests with `pytest tests`.
 
 ## Dependency review
 

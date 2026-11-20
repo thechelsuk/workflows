@@ -1,0 +1,53 @@
+---
+name: Release notes
+description: >-
+    Write release notes in the thechels.uk style: an About section with the
+    repository's description, then What's Changed, a bullet list of the
+    changes since the previous release. Conventional commit prefixes, pull
+    request and Dependabot links, commit hashes, co-author lines and automated
+    commits are left out; the change text, including Dependabot's bump text,
+    is kept.
+
+inputs:
+    previous:
+        description: The previous release tag. All history is used if it's empty or missing.
+        required: false
+        default: ""
+    description:
+        description: Text for the About section. Defaults to the repository's description on GitHub.
+        required: false
+        default: ""
+    skip:
+        description: A regular expression. Commit subjects that match it are left out.
+        required: false
+        default: ""
+    token:
+        description: Token used to read the repository's description.
+        required: false
+        default: ${{ github.token }}
+
+outputs:
+    notes_file:
+        description: Path to the Markdown release notes.
+        value: ${{ steps.notes.outputs.notes_file }}
+
+runs:
+    using: composite
+    steps:
+        - name: Write release notes
+          id: notes
+          shell: bash
+          env:
+              PREVIOUS: ${{ inputs.previous }}
+              DESCRIPTION: ${{ inputs.description }}
+              SKIP: ${{ inputs.skip }}
+              GH_TOKEN: ${{ inputs.token }}
+              SCRIPT: ${{ github.action_path }}/notes.py
+          run: |
+              if [ -z "$DESCRIPTION" ]; then
+                DESCRIPTION=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.description // ""' 2>/dev/null || true)
+              fi
+              OUT="$RUNNER_TEMP/release_notes.md"
+              python3 "$SCRIPT" --previous "$PREVIOUS" --description "$DESCRIPTION" --skip "$SKIP" --output "$OUT"
+              cat "$OUT"
+              echo "notes_file=$OUT" >> "$GITHUB_OUTPUT"

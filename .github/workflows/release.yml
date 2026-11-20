@@ -8,13 +8,19 @@
 #   release(patch):   patch bump
 #   release(major):   major bump
 #
-# Versions have no "v" prefix (1.2.3); the first is 1.0.0. The commit message is
+# Tags have a "v" prefix (v1.2.3), like the App Store releases; the first is v1.0.0. The commit message is
 # only ever read from an environment variable, never pasted into a script, so a
 # crafted message can't run commands.
 name: Release
 
 on:
     workflow_call:
+        inputs:
+            skip:
+                description: A regular expression. Commit subjects that match it are left out of the release notes.
+                type: string
+                required: false
+                default: ""
 
 permissions:
     contents: write
@@ -69,12 +75,13 @@ jobs:
               env:
                   BUMP: ${{ steps.check.outputs.bump }}
               run: |
-                  LATEST=$(git tag --list --sort=-version:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
+                  LATEST_TAG=$(git tag --list | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | awk '{ v = $0; sub(/^v/, "", v); print v, $0 }' | sort -V | tail -n1 | cut -d' ' -f2)
+                  LATEST="${LATEST_TAG#v}"
 
                   if [ -z "$LATEST" ]; then
-                    echo "No existing semver tags — will create 1.0.0."
+                    echo "No existing semver tags — will create v1.0.0."
                     echo "previous=" >> "$GITHUB_OUTPUT"
-                    echo "next=1.0.0" >> "$GITHUB_OUTPUT"
+                    echo "next=v1.0.0" >> "$GITHUB_OUTPUT"
                     exit 0
                   fi
 
@@ -88,41 +95,18 @@ jobs:
                     patch) PATCH=$((PATCH + 1)) ;;
                   esac
 
-                  NEXT="${MAJOR}.${MINOR}.${PATCH}"
-                  echo "Previous: $LATEST → Next: $NEXT ($BUMP)"
-                  echo "previous=$LATEST" >> "$GITHUB_OUTPUT"
+                  NEXT="v${MAJOR}.${MINOR}.${PATCH}"
+                  echo "Previous: $LATEST_TAG → Next: $NEXT ($BUMP)"
+                  echo "previous=$LATEST_TAG" >> "$GITHUB_OUTPUT"
                   echo "next=$NEXT" >> "$GITHUB_OUTPUT"
 
             - name: Build release notes
               id: notes
               if: steps.check.outputs.triggered == 'true'
-              env:
-                  PREV: ${{ steps.version.outputs.previous }}
-                  DESCRIPTION: ${{ steps.check.outputs.description }}
-              run: |
-                  if [ -n "$PREV" ] && git rev-parse "$PREV" >/dev/null 2>&1; then
-                    RANGE="${PREV}..HEAD"
-                    SINCE="since ${PREV}"
-                  else
-                    RANGE="HEAD"
-                    SINCE="all commits"
-                  fi
-
-                  LOG=$(git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges)
-
-                  {
-                    echo "## $DESCRIPTION"
-                    echo ""
-                    echo "### Changes (${SINCE})"
-                    echo ""
-                    if [ -n "$LOG" ]; then
-                      echo "$LOG"
-                    else
-                      echo "- No individual commits listed."
-                    fi
-                  } > /tmp/release_notes.md
-
-                  echo "notes_file=/tmp/release_notes.md" >> "$GITHUB_OUTPUT"
+              uses: thechelsuk/workflows/.github/actions/release-notes@main
+              with:
+                  previous: ${{ steps.version.outputs.previous }}
+                  skip: ${{ inputs.skip }}
 
             - name: Tag repository
               if: steps.check.outputs.triggered == 'true'
