@@ -1,7 +1,3 @@
-# Reusable new-issue triage: when an issue is opened, labels it, assigns it and, if a person (not a bot and not the
-# assignee) opened it, thanks them. Each repo calls it from a short .github/workflows/new-issue.yml (see README.md)
-# on `issues: opened`. The issue's title and body are read from the event payload inside the script, never pasted
-# into it, so a crafted issue can't run commands.
 name: New Issue
 
 on:
@@ -17,6 +13,14 @@ on:
         default: >-
           Thanks for opening this, {author}! A GitHub Action has triaged it and tagged it {labels},
           and it's now waiting for a human to review it.
+      sponsorable:
+        description: The user or organisation whose public sponsors get the sponsor label.
+        type: string
+        default: thechelsuk
+      sponsor_label:
+        description: The label added when the issue's author publicly sponsors the sponsorable account.
+        type: string
+        default: sponsor
 
 permissions:
   issues: write
@@ -37,10 +41,6 @@ jobs:
             const number = issue.number;
             const assignee = process.env.ASSIGNEE;
 
-            // Labels: "triage" on everything, plus a type. The default issue forms (thechelsuk/.github) are known by
-            // their headings, since a form's own label is only applied if the repo already has it; anything else
-            // (gh, the API) gets a guess from its wording when it has no labels yet. A repo's own forms bring their
-            // own labels (a correction or listing form, say), so an issue that already has any label isn't guessed.
             const TYPES = {
               bug: { color: "d73a4a", description: "Something isn't working" },
               enhancement: { color: "a2eeef", description: "New feature or request" },
@@ -62,7 +62,6 @@ jobs:
               else if (/\b(could you|would (it|you)|please add|feature|option|support for|ability to|i'?d like|it would be)\b/.test(text)) want.push("enhancement");
               else if (/\?\s*$/.test(issue.title) || /\b(how do i|how does|is there a way|clarify)\b/.test(text)) want.push("question");
             }
-            // "Which part?" on the bug and question forms: App or Website becomes a label.
             const part = body.match(/### Which part\?\s*\n+\s*(App|Website)\s*$/m);
             if (part) want.push(part[1].toLowerCase());
             const sponsored = /- \[x\] I've sponsored a Feature request bump/i.test(body);
@@ -85,3 +84,39 @@ jobs:
               await github.rest.issues.createComment({ owner, repo, issue_number: number, body: comment });
             }
             core.info(`#${number}: labels ${want.join(", ")}, assigned to ${assignee}${bot ? ", bot author" : ""}`);
+
+      - name: Label sponsors
+        uses: actions/github-script@v9
+        env:
+          SPONSORABLE: ${{ inputs.sponsorable }}
+          SPONSOR_LABEL: ${{ inputs.sponsor_label }}
+        with:
+          script: |
+            try {
+              const issue = context.payload.issue;
+              const { owner, repo } = context.repo;
+              const author = issue.user.login;
+              const sponsorable = process.env.SPONSORABLE;
+              const name = process.env.SPONSOR_LABEL;
+              const bot = issue.user.type === "Bot" || author.endsWith("[bot]");
+              if (bot || author.toLowerCase() === sponsorable.toLowerCase()) {
+                core.info(`${author} skipped for the sponsor label`);
+                return;
+              }
+              const res = await github.graphql(
+                `query ($sponsorable: String!, $author: String!) {
+                  repositoryOwner(login: $sponsorable) { ... on Sponsorable { isSponsoredBy(accountLogin: $author) } }
+                }`,
+                { sponsorable, author }
+              );
+              if (!res.repositoryOwner || !res.repositoryOwner.isSponsoredBy) {
+                core.info(`${author} is not a public sponsor of ${sponsorable}`);
+                return;
+              }
+              try { await github.rest.issues.getLabel({ owner, repo, name }); }
+              catch { await github.rest.issues.createLabel({ owner, repo, name, color: "fedbf0", description: "Sponsors the maintainer" }); }
+              await github.rest.issues.addLabels({ owner, repo, issue_number: issue.number, labels: [name] });
+              core.info(`#${issue.number}: ${author} sponsors ${sponsorable}, labelled ${name}`);
+            } catch (error) {
+              core.warning(`Sponsor check failed: ${error.message}`);
+            }

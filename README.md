@@ -152,6 +152,12 @@ saying an Action triaged and tagged it and it awaits human review (plus a line
 when they've ticked the sponsored Feature request bump), unless they're a bot
 or the assignee. Labels it needs are created if the repo doesn't have them.
 
+A second step adds a `sponsor` label when the author is a public sponsor of thechelsuk (private sponsors aren't
+visible to the check). It uses the workflow's own token, so no secret is needed, skips bots and the sponsored account
+itself, creates the label if missing, and never fails the job: if the GitHub query errors, it logs a warning and
+carries on. Callers that trigger only on `issues: opened`, as all of Mat's do, label issues; pull requests aren't
+covered.
+
 ```yaml
 name: New Issue
 
@@ -171,6 +177,8 @@ jobs:
 |---|---|---|
 | `assignee` | `thechelsuk` | Who new issues are assigned to (never thanked). |
 | `message` | a short thank-you | The comment; `{author}` becomes the author's @handle, `{labels}` the labels added. |
+| `sponsorable` | `thechelsuk` | The user or organisation whose public sponsors get the sponsor label. |
+| `sponsor_label` | `sponsor` | The label added to a sponsor's issue. |
 
 ## Pages
 
