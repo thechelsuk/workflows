@@ -1,0 +1,41 @@
+---
+name: Chrome Web Store
+description: >-
+    Upload an extension zip to the Chrome Web Store with the API v2, then
+    publish it. Signs in with a Google Cloud service account's JSON key, and
+    fails with the store's own message if the upload or publish reports an
+    error.
+
+inputs:
+    publisher_id:
+        description: The publisher ID, from the Developer Dashboard's Publisher > Settings.
+        required: true
+    item_id:
+        description: The item (extension) ID.
+        required: true
+    zip:
+        description: Path to the zip to upload.
+        required: false
+        default: distribution.zip
+    publish_type:
+        description: "`default` publishes once approved; `staged` waits for you to publish it from the dashboard."
+        required: false
+        default: default
+    service_account_key:
+        description: The service account's JSON key. Pass it from a secret.
+        required: true
+
+runs:
+    using: composite
+    steps:
+        - name: Upload and publish
+          shell: bash
+          env:
+              PUBLISHER_ID: ${{ inputs.publisher_id }}
+              ITEM_ID: ${{ inputs.item_id }}
+              ZIP: ${{ inputs.zip }}
+              PUBLISH_TYPE: ${{ inputs.publish_type }}
+              SERVICE_ACCOUNT_KEY: ${{ inputs.service_account_key }}
+              SCRIPT: ${{ github.action_path }}/cws.py
+          run: |
+              python3 "$SCRIPT" --publisher-id "$PUBLISHER_ID" --item-id "$ITEM_ID" --zip "$ZIP" --publish-type "$PUBLISH_TYPE"

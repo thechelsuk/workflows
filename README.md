@@ -120,6 +120,64 @@ call it in their own workflow, after checking out with `fetch-depth: 0`:
 
 Run its tests with `pytest tests`.
 
+## Chrome Web Store
+
+`.github/actions/chrome-web-store` uploads an extension's zip to the Chrome
+Web Store with the API v2, then publishes it. It signs in with a Google Cloud
+service account's JSON key (a signed JWT exchanged for an access token), waits
+while the store is still processing the upload, and fails with the store's
+own message if the upload or publish reports an error. Publish warnings show
+as warnings on the run. The API only updates items that exist, so an
+extension's first version is submitted by hand in the Developer Dashboard.
+
+Call it after the step that builds the zip, and skip it until the repo has an
+item ID:
+
+```yaml
+- name: Publish to the Chrome Web Store
+  if: vars.CWS_ITEM_ID != ''
+  uses: thechelsuk/workflows/.github/actions/chrome-web-store@main
+  with:
+    publisher_id: ${{ vars.CWS_PUBLISHER_ID }}
+    item_id: ${{ vars.CWS_ITEM_ID }}
+    zip: distribution.zip
+    service_account_key: ${{ secrets.CWS_SERVICE_ACCOUNT_KEY }}
+```
+
+| Input | Default | What it does |
+|---|---|---|
+| `publisher_id` | (required) | The publisher ID. |
+| `item_id` | (required) | The item ID, the same as the extension ID. |
+| `zip` | `distribution.zip` | The zip to upload. |
+| `publish_type` | `default` | `default` publishes once the review passes; `staged` waits for you to publish it from the dashboard. |
+| `service_account_key` | (required) | The service account's JSON key, from a secret. |
+
+The store rejects a version it already has, so run it only when the
+manifest's version is new.
+
+### Set-up
+
+Once per publisher:
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), pick or
+   create a project, search for "Chrome Web Store API" and enable it.
+2. In IAM & Admin > Service Accounts, create a service account. It needs no
+   roles or permissions.
+3. In the [Developer Dashboard](https://chrome.google.com/webstore/devconsole),
+   open Account and add the service account's email. A publisher can have one
+   service account.
+4. Back on the service account, open Keys > Add key > Create new key > JSON,
+   and keep the downloaded file safe. It's a password: never commit it.
+5. Note the publisher ID from the Developer Dashboard's Publisher > Settings.
+
+In each extension repo, under Settings > Secrets and variables > Actions:
+
+- Secret `CWS_SERVICE_ACCOUNT_KEY`: the whole JSON key file.
+- Variable `CWS_PUBLISHER_ID`: the publisher ID.
+- Variable `CWS_ITEM_ID`: the item ID, from the item's Package tab in the
+  Developer Dashboard. Leave it unset until the first version is in the store;
+  the store step is skipped until then.
+
 ## Dependency review
 
 `.github/workflows/dependency-review.yml` flags dependencies a pull request
